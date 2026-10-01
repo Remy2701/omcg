@@ -317,3 +317,18 @@ pub fn imports_002_test() {
     ["g", "h"],
   ])
 }
+
+pub fn imports_003_test() {
+  let module =
+    module.root.create()
+    |> module.add_aliased_import(["b", "c"], "d")
+    |> module.add_import(["a", "b"])
+    |> module.add_aliased_import(["b", "c"], "d")
+
+  module.imports
+  |> list.map(fn(import_) { #(import_.path, import_.alias) })
+  |> should.equal([
+    #(["a", "b"], option.None),
+    #(["b", "c"], option.Some("d")),
+  ])
+}

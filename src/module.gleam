@@ -95,43 +95,49 @@ pub fn merge_imports(a: Module, b: Module) -> Module {
   |> simplify_imports()
 }
 
+fn simplify_import_list(imports: List(Import)) -> List(Import) {
+  use imports, current <- list.fold(imports, [])
+
+  let #(matching, rest) =
+    list.fold(imports, #([], []), fn(acc, import_: Import) {
+      let #(matching, rest) = acc
+
+      let is_matching =
+        string.join(import_.path, "/") == string.join(current.path, "/")
+        && import_.alias == current.alias
+
+      case is_matching {
+        True -> #([import_, ..matching], rest)
+        False -> #(matching, [import_, ..rest])
+      }
+    })
+  let #(matching, rest) = #(list.reverse(matching), list.reverse(rest))
+
+  case matching {
+    [matching] -> [
+      Import(
+        path: matching.path,
+        items: list.append(matching.items, current.items)
+          // TODO: Consider handling alias conflicts here.
+          |> list.sort(fn(a, b) {
+            case a, b {
+              ImportType(..), ImportItem(..) -> order.Lt
+              ImportItem(..), ImportType(..) -> order.Gt
+              _, _ -> string.compare(a.name, b.name)
+            }
+          }),
+        alias: matching.alias,
+      ),
+      ..rest
+    ]
+    _ -> [current, ..rest]
+  }
+}
+
 fn simplify_imports(module: Module) -> Module {
   Module(
     ..module,
-    imports: list.fold(module.imports, [], fn(imports, current) {
-        let matching =
-          list.filter(imports, fn(value: Import) {
-            string.join(value.path, "/") == string.join(current.path, "/")
-            && value.alias == None
-            && current.alias == None
-          })
-        let rest =
-          list.filter(imports, fn(value: Import) {
-            string.join(value.path, "/") != string.join(current.path, "/")
-            || value.alias != None
-            || current.alias != None
-          })
-
-        case matching {
-          [matching] -> [
-            Import(
-              path: matching.path,
-              items: list.append(matching.items, current.items)
-                // TODO: Consider handling alias conflicts here.
-                |> list.sort(fn(a, b) {
-                  case a, b {
-                    ImportType(..), ImportItem(..) -> order.Lt
-                    ImportItem(..), ImportType(..) -> order.Gt
-                    _, _ -> string.compare(a.name, b.name)
-                  }
-                }),
-              alias: None,
-            ),
-            ..rest
-          ]
-          _ -> [current, ..rest]
-        }
-      })
+    imports: simplify_import_list(module.imports)
       |> list.sort(fn(a: Import, b: Import) {
         string.compare(string.join(a.path, "/"), string.join(b.path, "/"))
       }),
@@ -279,6 +285,7 @@ pub type Node {
   UseExpression(parameters: List(String), rhs: Node)
   Literal(literal: Literal)
   SectionComment(comment: String)
+  LetDefinition(pattern: Node, type_: Option(Node), value: Node)
 }
 
 pub fn node_to_string(node: Node, indent: Int) -> String {
@@ -378,7 +385,15 @@ pub fn node_to_string(node: Node, indent: Int) -> String {
           <> "<> "
           <> node_to_string(rhs, indent)
         }
-        Pipe -> " |> " <> node_to_string(rhs, indent)
+        Pipe -> {
+          let rhs_str = node_to_string(rhs, indent)
+          case string.length(lhs_str) + string.length(rhs_str) > 60 {
+            True -> "\n" <> indent_str(indent)
+            False -> " "
+          }
+          <> "|> "
+          <> node_to_string(rhs, indent)
+        }
       }
     }
     Identifier(name:) -> name
@@ -539,7 +554,6 @@ pub fn node_to_string(node: Node, indent: Int) -> String {
         Tuple(value:) -> {
           let values_str =
             value
-            |> list.reverse
             |> list.map(node_to_string(_, indent + 1))
 
           let new_line =
@@ -596,6 +610,16 @@ pub fn node_to_string(node: Node, indent: Int) -> String {
         }
       }
     SectionComment(comment) -> section_comment.render(comment)
+    LetDefinition(pattern:, type_:, value:) -> {
+      "let "
+      <> node_to_string(pattern, indent)
+      <> case type_ {
+        Some(type_node) -> " : " <> node_to_string(type_node, indent)
+        None -> ""
+      }
+      <> " = "
+      <> node_to_string(value, indent)
+    }
   }
 }
 
@@ -990,6 +1014,7 @@ pub const literal = LiteralNS(
   float: float_node_create,
   bool: bool_node_create,
   tuple: tuple_node_create,
+  nested_tuple: nested_tuple_node_create,
   list: list_node_create,
   nil: Module(imports: [], node: Identifier("Nil")),
 )
@@ -1001,6 +1026,7 @@ pub type LiteralNS {
     float: fn(Float) -> Module,
     bool: fn(Bool) -> Module,
     tuple: fn(List(Module)) -> Module,
+    nested_tuple: fn(List(Module)) -> Module,
     list: fn(List(Module)) -> Module,
     nil: Module,
   )
@@ -1023,14 +1049,45 @@ fn bool_node_create(value: Bool) -> Module {
 }
 
 fn tuple_node_create(value: List(Module)) -> Module {
-  list.fold(value, create_module(Literal(Tuple([]))), fn(module, value) {
-    use module, value <- modify_module(module, value)
+  let module =
+    list.fold(value, create_module(Literal(Tuple([]))), fn(module, value) {
+      use module, value <- modify_module(module, value)
 
-    case module {
-      Literal(Tuple(values)) -> Literal(Tuple([value, ..values]))
-      _ -> module
-    }
-  })
+      case module {
+        Literal(Tuple(values)) -> Literal(Tuple([value, ..values]))
+        _ -> module
+      }
+    })
+
+  use node <- modify_module_self(module)
+
+  case node {
+    Literal(Tuple(values)) -> Literal(Tuple(list.reverse(values)))
+    _ -> node
+  }
+}
+
+fn nested_tuple_node_create(value: List(Module)) -> Module {
+  let tuple = tuple_node_create(value)
+  use node <- modify_module_self(tuple)
+
+  // [a, b, c, d] -> [[[a, b], c] ,d]
+  // a -> [a]
+  // b -> [a, b]
+  // c -> [[a, b], c]
+
+  case node {
+    Literal(Tuple(values)) ->
+      list.fold(values, Literal(Tuple([])), fn(acc, value) {
+        case acc {
+          Literal(Tuple([])) -> Literal(Tuple([value]))
+          Literal(Tuple([a])) -> Literal(Tuple([a, value]))
+          Literal(Tuple([_, _])) -> Literal(Tuple([acc, value]))
+          _ -> acc
+        }
+      })
+    _ -> node
+  }
 }
 
 fn list_node_create(value: List(Module)) -> Module {
@@ -1207,4 +1264,35 @@ fn const_definition_node_as_type(module: Module) -> Module {
 
 pub fn section_comment(comment: String) -> Module {
   create_module(SectionComment(comment: comment))
+}
+
+//-----------------------------------------------------------------------------------------------//
+//                                        Let Definition                                         //
+//-----------------------------------------------------------------------------------------------//
+
+pub const let_definition = LetDefinitionNS(
+  create: let_definition_node_create,
+  type_: let_definition_node_type,
+)
+
+pub type LetDefinitionNS {
+  LetDefinitionNS(
+    create: fn(Module, Module) -> Module,
+    type_: fn(Module, Module) -> Module,
+  )
+}
+
+fn let_definition_node_create(pattern: Module, value: Module) -> Module {
+  use pattern, value <- modify_module(pattern, value)
+
+  LetDefinition(pattern: pattern, type_: None, value: value)
+}
+
+fn let_definition_node_type(module: Module, type_: Module) -> Module {
+  use module, type_ <- modify_module(module, type_)
+
+  case module {
+    LetDefinition(..) -> LetDefinition(..module, type_: Some(type_))
+    _ -> module
+  }
 }
