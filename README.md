@@ -7,7 +7,7 @@ Yet another (experimental) code generation library for gleam.
 
 ```toml
 [dependencies]
-module = { git = "https://github.com/Remy2701/module.git", ref = "main" }
+module = { git = "https://github.com/Remy2701/module.git", ref = "v0.1.4" }
 ```
 
 ```gleam
