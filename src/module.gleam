@@ -538,7 +538,7 @@ pub fn node_to_string(node: Node, indent: Int) -> String {
       <> "}"
     UseExpression(parameters:, rhs:) ->
       "use "
-      <> string.join(parameters, ", ")
+      <> string.join(list.reverse(parameters), ", ")
       <> case parameters {
         [] -> ""
         [_, ..] -> " "
