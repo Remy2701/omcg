@@ -5,7 +5,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order
 import gleam/string
-import module/section_comment
+import omcg/section_comment
 
 //-----------------------------------------------------------------------------------------------//
 //                                           Imports                                             //

@@ -1,5 +1,5 @@
 import gleeunit/should
-import module/id_case
+import omcg/id_case
 
 //-----------------------------------------------------------------------------------------------//
 //                                       Capitalise First                                        //

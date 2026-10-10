@@ -1,12 +1,7 @@
 import gleam/list
 import gleam/option
-import gleeunit
 import gleeunit/should
-import module
-
-pub fn main() -> Nil {
-  gleeunit.main()
-}
+import omcg/module
 
 //-----------------------------------------------------------------------------------------------//
 //                                            Literal                                            //
