@@ -1,6 +1,10 @@
 name = "omcg"
 version = "0.2.0"
 
+description = "One more code generator for Gleam."
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "Remy2701", repo = "omcg" }
+
 [dependencies]
 gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 
