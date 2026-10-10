@@ -7,7 +7,7 @@ One more code generation library for gleam.
 
 ```toml
 [dependencies]
-omcg = { git = "https://github.com/Remy2701/module.git", ref = "v0.1.4" }
+omcg = ">= 0.2.0 and < 1.0.0"
 ```
 
 ```gleam
