@@ -5,9 +5,9 @@ import gleam/string
 pub fn render(name: String) {
   let padding = int.to_float(76 - string.length(name)) /. 2.0
 
-  "//"
-  <> string.repeat("-", 76)
-  <> "//"
+  "// "
+  <> string.repeat("–", 74)
+  <> " //"
   <> "\n"
   <> "//"
   <> string.repeat(" ", float.round(float.floor(padding)))
@@ -15,7 +15,7 @@ pub fn render(name: String) {
   <> string.repeat(" ", float.round(float.ceiling(padding)))
   <> "//"
   <> "\n"
-  <> "//"
-  <> string.repeat("-", 76)
-  <> "//"
+  <> "// "
+  <> string.repeat("–", 74)
+  <> " //"
 }
