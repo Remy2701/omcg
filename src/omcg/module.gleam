@@ -904,6 +904,7 @@ pub const types = BuiltinTypesNS(
   string: builtin_type_node_string,
   int: builtin_type_node_int,
   float: builtin_type_node_float,
+  bool: builtin_type_node_bool,
 )
 
 pub type BuiltinTypesNS {
@@ -911,6 +912,7 @@ pub type BuiltinTypesNS {
     string: fn() -> Module,
     int: fn() -> Module,
     float: fn() -> Module,
+    bool: fn() -> Module,
   )
 }
 
@@ -924,6 +926,10 @@ fn builtin_type_node_int() -> Module {
 
 fn builtin_type_node_float() -> Module {
   identifier_node_create("Float")
+}
+
+fn builtin_type_node_bool() -> Module {
+  identifier_node_create("Bool")
 }
 
 //-----------------------------------------------------------------------------------------------//
