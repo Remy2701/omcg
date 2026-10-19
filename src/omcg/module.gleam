@@ -7,19 +7,28 @@ import gleam/order
 import gleam/string
 import omcg/section_comment
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                           Imports                                             //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// Represents a gleam import statement.
 pub type Import {
   Import(path: List(String), items: List(ImportItem), alias: Option(String))
 }
 
+/// Represents an item within a gleam import statement.
 pub type ImportItem {
   ImportType(name: String, alias: Option(String))
   ImportItem(name: String, alias: Option(String))
 }
 
+/// Adds a new import statement to the module.
+/// 
+/// ```gleam
+/// add_import(module, ["some", "module"])
+/// // –––––––––––– Becomes –––––––––––– //
+/// import some/module
+/// ```
 pub fn add_import(module module: Module, path path: List(String)) -> Module {
   Module(..module, imports: [
     Import(path: path, items: [], alias: None),
@@ -28,6 +37,13 @@ pub fn add_import(module module: Module, path path: List(String)) -> Module {
   |> simplify_imports()
 }
 
+/// Adds a new type import to the module.
+/// 
+/// ```gleam
+/// add_type_import(module, ["gleam", "option"], "Option")
+/// // –––––––––––– Becomes –––––––––––– //
+/// import gleam/option.{type Option}
+/// ```
 pub fn add_type_import(
   module module: Module,
   path path: List(String),
@@ -40,6 +56,18 @@ pub fn add_type_import(
   |> simplify_imports()
 }
 
+/// Adds a new aliased type import to the module.
+/// 
+/// ```gleam
+/// add_aliased_type_import(
+///   module:, 
+///   path: ["gleam", "option"], 
+///   name: "Option", 
+///   alias: "Opt"
+/// )
+/// // –––––––––––– Becomes –––––––––––– //
+/// import gleam/option.{type Option as Opt}
+/// ```
 pub fn add_aliased_type_import(
   module module: Module,
   path path: List(String),
@@ -53,6 +81,13 @@ pub fn add_aliased_type_import(
   |> simplify_imports()
 }
 
+/// Adds a new item import to the module.
+/// 
+/// ```gleam
+/// add_item_import(module, ["gleam", "option"], "Some")
+/// // –––––––––––– Becomes –––––––––––– //
+/// import gleam/option.{Some}
+/// ```
 pub fn add_item_import(
   module module: Module,
   path path: List(String),
@@ -65,6 +100,18 @@ pub fn add_item_import(
   |> simplify_imports()
 }
 
+/// Adds a new aliased item import to the module.
+/// 
+/// ```gleam
+/// add_aliased_item_import(
+///   module:, 
+///   path: ["gleam", "option"], 
+///   name: "Some", 
+///   alias: "S"
+/// )
+/// // –––––––––––– Becomes –––––––––––– //
+/// import gleam/option.{Some as S}
+/// ```
 pub fn add_aliased_item_import(
   module module: Module,
   path path: List(String),
@@ -78,6 +125,17 @@ pub fn add_aliased_item_import(
   |> simplify_imports()
 }
 
+/// Adds a new aliased import to the module.
+/// 
+/// ```gleam
+/// add_aliased_import(
+///   module:, 
+///   path: ["gleam", "option"], 
+///   alias: "opt"
+/// )
+/// // –––––––––––– Becomes –––––––––––– //
+/// import gleam/option as opt
+/// ```
 pub fn add_aliased_import(
   module module: Module,
   path path: List(String),
@@ -90,11 +148,14 @@ pub fn add_aliased_import(
   |> simplify_imports()
 }
 
+/// Merges the imports of two modules, returning a new module with combined imports
+@internal
 pub fn merge_imports(a: Module, b: Module) -> Module {
   Module(..a, imports: list.append(a.imports, b.imports))
   |> simplify_imports()
 }
 
+/// Simplifies a list of imports by merging matching imports and sorting their items.
 fn simplify_import_list(imports: List(Import)) -> List(Import) {
   use imports, current <- list.fold(imports, [])
 
@@ -134,6 +195,7 @@ fn simplify_import_list(imports: List(Import)) -> List(Import) {
   }
 }
 
+/// Simplifies the imports of a module by merging matching imports and sorting them.
 fn simplify_imports(module: Module) -> Module {
   Module(
     ..module,
@@ -144,18 +206,21 @@ fn simplify_imports(module: Module) -> Module {
   )
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                            Module                                             //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// A module represents a node with associated (scoped) imports.
 pub type Module {
   Module(node: Node, imports: List(Import))
 }
 
+/// Create a new module with the given node and an empty list of imports.
 fn create_module(node: Node) -> Module {
   Module(node:, imports: [])
 }
 
+/// Modify the node of a module using another module and a modification function.
 fn modify_module(
   module: Module,
   other: Module,
@@ -165,23 +230,29 @@ fn modify_module(
   |> merge_imports(other)
 }
 
+/// Modify the node of a module using a modification function that only takes the module's node.
 fn modify_module_self(module: Module, modify: fn(Node) -> Node) -> Module {
   Module(..module, node: modify(module.node))
 }
 
-pub fn to_string(module: Module) -> String {
-  // TODO: Generate imports
-  // list.map(module.imports, )
+/// Converts a module's node to a string. Does not include imports.
+pub fn module_node_to_string(module: Module) -> String {
   module.node
   |> node_to_string(0)
 }
 
+/// Converts a module's imports to a string. Does not include the module's node.
+pub fn module_imports_to_string(module: Module) -> String {
+  string.join(list.map(module.imports, import_to_string), "\n")
+}
+
+/// Converts an import to a string.
 fn import_to_string(import_: Import) -> String {
   "import "
   <> string.join(import_.path, "/")
   <> case import_.items {
     [] -> ""
-    _ ->
+    _ -> {
       ".{"
       <> string.join(
         list.map(import_.items, fn(item) {
@@ -194,6 +265,7 @@ fn import_to_string(import_: Import) -> String {
         ", ",
       )
       <> "}"
+    }
   }
   <> case import_.alias {
     Some(alias) -> " as " <> alias
@@ -201,18 +273,20 @@ fn import_to_string(import_: Import) -> String {
   }
 }
 
-pub fn to_string2(module: Module) -> String {
+/// Converts a module to a string, including both its imports and its node.
+pub fn to_string(module: Module) -> String {
   [
-    string.join(list.map(module.imports, import_to_string), "\n"),
-    node_to_string(module.node, 0),
+    module_imports_to_string(module),
+    module_node_to_string(module),
   ]
   |> string.join("\n\n")
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                             Node                                              //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// The parameters of a function definition.
 pub type FunctionDefinitionParameter {
   FunctionDefinitionParameter(
     alias: Option(String),
@@ -221,47 +295,73 @@ pub type FunctionDefinitionParameter {
   )
 }
 
+/// The different operators that can be used in binary operations.
 pub type Operator {
+  /// Access a field or property using the dot operator `.`
   Access
+  /// Addition operator `+`
   Add
+  /// Subtraction operator `-`
   Subtract
+  /// Multiplication operator `*`
   Multiply
+  /// Division operator `/`
   Divide
+  /// Floating-point addition operator `+.`
   FloatAdd
+  /// Floating-point subtraction operator `-.`
   FloatSubtract
+  /// Floating-point division operator `/.`
   FloatDivide
+  /// Floating-point multiplication operator `*.`
   FloatMultiply
+  /// String concatenation operator `<>`
   StringConcat
+  /// Pipe operator `|>`
   Pipe
 }
 
+/// The parameters of a function call.
 pub type FunctionCallParameter {
   FunctionCallParameter(alias: Option(String), value: Node)
 }
 
+/// The field of a type variant.
 pub type Field {
   Field(name: Option(String), type_: Node)
 }
 
+/// The data content of a type variant.
 pub type TypeVariantData {
   TypeVariantData(name: String, fields: List(Field))
 }
 
+/// The data content of a case branch.
 pub type CaseBranchData {
   CaseBranchData(expression: Node, guard: Option(Node), body: List(Node))
 }
 
+/// The different types of literals.
 pub type Literal {
+  /// A string literal `"Hello, world!"`.
   String(value: String)
+  /// An integer literal `42`.
   Int(value: Int)
+  /// A floating-point literal `3.14`.
   Float(value: Float)
+  /// A boolean literal `True` or `False`.
   Bool(value: Bool)
+  /// A tuple literal `#("a", 1, False)`.
   Tuple(value: List(Node))
+  /// A list literal `[1, 2, 3]`.
   List(value: List(Node))
 }
 
+/// The different types of nodes in the abstract syntax tree.
 pub type Node {
+  /// A root node containing the entire body of the program.
   Root(body: List(Node))
+  /// A function definition node
   FunctionDefinition(
     public: Bool,
     name: Option(String),
@@ -269,25 +369,38 @@ pub type Node {
     return_type: Option(Node),
     body: List(Node),
   )
+  /// A binary operation
   BinaryOperation(lhs: Node, operator: Operator, rhs: Node)
+  /// An identifier node representing a variable, function, type or module.
   Identifier(name: String)
+  /// A function call node.
   FunctionCall(lhs: Node, parameters: List(FunctionCallParameter))
+  /// The variant of a type definition.
   TypeVariant(data: TypeVariantData)
+  /// A type definition node
   TypeDefinition(
     public: Bool,
     name: String,
     generics: List(String),
     variants: List(TypeVariantData),
   )
+  /// Definition of a constant.
   ConstDefinition(public: Bool, as_type: Bool, name: String, value: Node)
+  /// The branch of a case expression.
   CaseBranch(data: CaseBranchData)
+  /// A case expression node.
   CaseExpression(expression: Node, branches: List(CaseBranchData))
+  /// A use expression node.
   UseExpression(parameters: List(String), rhs: Node)
+  /// A literal node.
   Literal(literal: Literal)
+  /// A section comment node. (Non-idiomatic gleam)
   SectionComment(comment: String)
+  /// The definition of a let-variable.
   LetDefinition(pattern: Node, type_: Option(Node), value: Node)
 }
 
+/// Converts a node to its string representation with the given indentation.
 pub fn node_to_string(node: Node, indent: Int) -> String {
   let indent_str = fn(indent) { string.repeat("  ", indent) }
 
@@ -623,20 +736,24 @@ pub fn node_to_string(node: Node, indent: Int) -> String {
   }
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                             Root                                              //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// The namespace for the root sub-module.
 pub const root = RootNS(create: root_node_create, add: root_node_add)
 
+/// The type representing the root sub-module namespace.
 pub type RootNS {
   RootNS(create: fn() -> Module, add: fn(Module, Module) -> Module)
 }
 
+/// Creates a new root node.
 fn root_node_create() -> Module {
   create_module(Root(body: []))
 }
 
+/// Adds a node to the root module.
 fn root_node_add(module: Module, node: Module) -> Module {
   use module, node <- modify_module(module, node)
 
@@ -647,10 +764,11 @@ fn root_node_add(module: Module, node: Module) -> Module {
   }
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                      Function Definition                                      //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// The namespace for the function definition sub-module.
 pub const function_definition = FunctionDefinitionNS(
   create: function_definition_node_create,
   public: function_definition_node_public,
@@ -662,6 +780,7 @@ pub const function_definition = FunctionDefinitionNS(
   add: function_definition_node_add,
 )
 
+/// The type representing the function definition sub-module namespace.
 pub type FunctionDefinitionNS {
   FunctionDefinitionNS(
     create: fn() -> Module,
@@ -675,6 +794,7 @@ pub type FunctionDefinitionNS {
   )
 }
 
+/// Creates a new function definition node.
 fn function_definition_node_create() -> Module {
   create_module(
     FunctionDefinition(
@@ -687,6 +807,7 @@ fn function_definition_node_create() -> Module {
   )
 }
 
+/// Marks the function definition node as public.
 fn function_definition_node_public(module: Module) -> Module {
   use node <- modify_module_self(module)
 
@@ -696,6 +817,7 @@ fn function_definition_node_public(module: Module) -> Module {
   }
 }
 
+/// Sets the name of the function definition node.
 fn function_definition_node_with_name(module: Module, name: String) -> Module {
   use node <- modify_module_self(module)
 
@@ -705,6 +827,7 @@ fn function_definition_node_with_name(module: Module, name: String) -> Module {
   }
 }
 
+/// Adds a typed parameter to the function definition node.
 fn function_definition_node_add_parameter(
   module: Module,
   name: String,
@@ -722,6 +845,7 @@ fn function_definition_node_add_parameter(
   }
 }
 
+/// Adds an untyped parameter to the function definition node.
 fn function_definition_node_add_untyped_parameter(
   module: Module,
   name: String,
@@ -738,6 +862,7 @@ fn function_definition_node_add_untyped_parameter(
   }
 }
 
+/// Adds an aliased parameter to the function definition node.
 fn function_definition_node_add_aliased_parameter(
   module: Module,
   alias: String,
@@ -760,6 +885,7 @@ fn function_definition_node_add_aliased_parameter(
   }
 }
 
+/// Sets the return type of the function definition node.
 fn function_definition_node_with_return_type(
   module: Module,
   type_: Module,
@@ -773,6 +899,7 @@ fn function_definition_node_with_return_type(
   }
 }
 
+/// Adds a node to the body of the function definition node.
 fn function_definition_node_add(module: Module, node: Module) -> Module {
   use module, node <- modify_module(module, node)
 
@@ -783,10 +910,11 @@ fn function_definition_node_add(module: Module, node: Module) -> Module {
   }
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                       Binary operation                                        //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// The namespace for the binary operation sub-module.
 pub const binop = BinaryOperationNS(
   create: binary_operation_node_create,
   access: binary_operation_node_access,
@@ -794,6 +922,7 @@ pub const binop = BinaryOperationNS(
   string_concat: binary_operation_node_string_concat,
 )
 
+/// The type representing the binary operation sub-module namespace.
 pub type BinaryOperationNS {
   BinaryOperationNS(
     create: fn(Module, Operator, Module) -> Module,
@@ -803,6 +932,7 @@ pub type BinaryOperationNS {
   )
 }
 
+/// Creates a new binary operation node.
 fn binary_operation_node_create(
   lhs: Module,
   operator: Operator,
@@ -813,28 +943,33 @@ fn binary_operation_node_create(
   BinaryOperation(lhs:, operator:, rhs:)
 }
 
+/// Creates a new binary operation node representing an access operation.
 fn binary_operation_node_access(lhs: Module, rhs: Module) -> Module {
   binary_operation_node_create(lhs, Access, rhs)
 }
 
+/// Creates a new binary operation node representing a pipe operation.
 fn binary_operation_node_pipe(lhs: Module, rhs: Module) -> Module {
   binary_operation_node_create(lhs, Pipe, rhs)
 }
 
+/// Creates a new binary operation node representing a string concatenation operation.
 fn binary_operation_node_string_concat(lhs: Module, rhs: Module) -> Module {
   binary_operation_node_create(lhs, StringConcat, rhs)
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                         Function Call                                         //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// The namespace for the function call sub-module.
 pub const function_call = FunctionCallNS(
   create: function_call_node_create,
   add: function_call_node_add,
   add_with_alias: function_call_node_add_with_alias,
 )
 
+/// The type representing the function call sub-module namespace.
 pub type FunctionCallNS {
   FunctionCallNS(
     create: fn(Module) -> Module,
@@ -843,12 +978,14 @@ pub type FunctionCallNS {
   )
 }
 
+/// Creates a new function call node.
 fn function_call_node_create(lhs: Module) -> Module {
   use lhs <- modify_module_self(lhs)
 
   FunctionCall(lhs:, parameters: [])
 }
 
+/// Adds a parameter to the function call node.
 fn function_call_node_add(module: Module, parameter: Module) -> Module {
   use lhs, parameter <- modify_module(module, parameter)
 
@@ -862,6 +999,7 @@ fn function_call_node_add(module: Module, parameter: Module) -> Module {
   }
 }
 
+/// Adds an aliased parameter to the function call node.
 fn function_call_node_add_with_alias(
   module: Module,
   alias: String,
@@ -879,27 +1017,31 @@ fn function_call_node_add_with_alias(
   }
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                          Identifier                                           //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// The namespace for the identifier sub-module.
 pub const identifier = IdentifierNS(
   create: identifier_node_create,
   discard: Module(imports: [], node: Identifier("_")),
 )
 
+/// The type representing the identifier sub-module namespace.
 pub type IdentifierNS {
   IdentifierNS(create: fn(String) -> Module, discard: Module)
 }
 
+/// Creates a new identifier node.
 fn identifier_node_create(name: String) -> Module {
   create_module(Identifier(name))
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                         Builtin Type                                          //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// The namespace for the builtin types sub-module.
 pub const types = BuiltinTypesNS(
   string: builtin_type_node_string,
   int: builtin_type_node_int,
@@ -907,6 +1049,7 @@ pub const types = BuiltinTypesNS(
   bool: builtin_type_node_bool,
 )
 
+/// The type representing the builtin types sub-module namespace.
 pub type BuiltinTypesNS {
   BuiltinTypesNS(
     string: fn() -> Module,
@@ -916,32 +1059,38 @@ pub type BuiltinTypesNS {
   )
 }
 
+/// Creates a new builtin type node representing the `String` type.
 fn builtin_type_node_string() -> Module {
   identifier_node_create("String")
 }
 
+/// Creates a new builtin type node representing the `Int` type.
 fn builtin_type_node_int() -> Module {
   identifier_node_create("Int")
 }
 
+/// Creates a new builtin type node representing the `Float` type.
 fn builtin_type_node_float() -> Module {
   identifier_node_create("Float")
 }
 
+/// Creates a new builtin type node representing the `Bool` type.
 fn builtin_type_node_bool() -> Module {
   identifier_node_create("Bool")
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                        Type Definition                                        //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// The namespace for the type definition sub-module.
 pub const type_definition = TypeDefinitionNS(
   create: type_definition_node_create,
   public: type_definition_node_public,
   add: type_definition_node_add,
 )
 
+/// The type representing the type definition sub-module namespace.
 pub type TypeDefinitionNS {
   TypeDefinitionNS(
     create: fn(String) -> Module,
@@ -950,12 +1099,14 @@ pub type TypeDefinitionNS {
   )
 }
 
+/// Creates a new type definition node with the given name.
 fn type_definition_node_create(name: String) -> Module {
   create_module(
     TypeDefinition(name: name, public: False, variants: [], generics: []),
   )
 }
 
+/// Marks the given type definition node as public.
 fn type_definition_node_public(module: Module) -> Module {
   use module <- modify_module_self(module)
 
@@ -965,6 +1116,7 @@ fn type_definition_node_public(module: Module) -> Module {
   }
 }
 
+/// Adds a variant to the given type definition node.
 fn type_definition_node_add(module: Module, variant: Module) -> Module {
   use module, variant <- modify_module(module, variant)
 
@@ -975,11 +1127,17 @@ fn type_definition_node_add(module: Module, variant: Module) -> Module {
   }
 }
 
+/// The namespace for the type variant sub-module.
 pub const type_variant = TypeVariantNS(
   create: type_variant_node_create,
   field: type_variant_node_field,
 )
 
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
+//                                         Type Variant                                          //
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
+
+/// The type representing the type variant sub-module namespace.
 pub type TypeVariantNS {
   TypeVariantNS(
     create: fn(String) -> Module,
@@ -987,10 +1145,12 @@ pub type TypeVariantNS {
   )
 }
 
+/// Creates a new type variant node with the given name.
 fn type_variant_node_create(name: String) -> Module {
   create_module(TypeVariant(data: TypeVariantData(name: name, fields: [])))
 }
 
+/// Adds a field to the given type variant node.
 fn type_variant_node_field(
   variant: Module,
   name: Option(String),
@@ -1010,10 +1170,11 @@ fn type_variant_node_field(
   }
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                            Literal                                            //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// The namespace for the literal sub-module.
 pub const literal = LiteralNS(
   string: string_node_create,
   int: int_node_create,
@@ -1025,6 +1186,7 @@ pub const literal = LiteralNS(
   nil: Module(imports: [], node: Identifier("Nil")),
 )
 
+/// The type representing the literal sub-module namespace.
 pub type LiteralNS {
   LiteralNS(
     string: fn(String) -> Module,
@@ -1038,22 +1200,27 @@ pub type LiteralNS {
   )
 }
 
+/// Creates a new string literal node with the given value.
 fn string_node_create(value: String) -> Module {
   create_module(Literal(String(value)))
 }
 
+/// Creates a new integer literal node with the given value.
 fn int_node_create(value: Int) -> Module {
   create_module(Literal(Int(value)))
 }
 
+/// Creates a new float literal node with the given value.
 fn float_node_create(value: Float) -> Module {
   create_module(Literal(Float(value)))
 }
 
+/// Creates a new boolean literal node with the given value.
 fn bool_node_create(value: Bool) -> Module {
   create_module(Literal(Bool(value)))
 }
 
+/// Creates a new tuple literal node with the given values.
 fn tuple_node_create(value: List(Module)) -> Module {
   let module =
     list.fold(value, create_module(Literal(Tuple([]))), fn(module, value) {
@@ -1073,6 +1240,14 @@ fn tuple_node_create(value: List(Module)) -> Module {
   }
 }
 
+/// Creates a new nested tuple literal node with the given values.
+/// 
+/// # Example
+/// ```gleam
+/// nested_tuple_node_create([a, b, c, d])
+/// // –––––––––––– Becomes –––––––––––– //
+/// [[[a, b], c], d]
+/// ```
 fn nested_tuple_node_create(value: List(Module)) -> Module {
   let tuple = tuple_node_create(value)
   use node <- modify_module_self(tuple)
@@ -1096,6 +1271,7 @@ fn nested_tuple_node_create(value: List(Module)) -> Module {
   }
 }
 
+/// Creates a new list literal node with the given values.
 fn list_node_create(value: List(Module)) -> Module {
   list.fold(value, create_module(Literal(List([]))), fn(module, value) {
     use module, value <- modify_module(module, value)
@@ -1107,16 +1283,18 @@ fn list_node_create(value: List(Module)) -> Module {
   })
 }
 
-//-----------------------------------------------------------------------------------------------//
-//                                        Case Expression                                        //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
+//                                          Case Branch                                          //
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// Namespace for creating and manipulating case branch nodes.
 pub const case_branch = CaseBranchNS(
   create: case_branch_node_create,
   create_default: case_branch_node_create_default,
   add: case_branch_node_add,
 )
 
+/// The type representing the namespace for creating and manipulating case branch nodes.
 pub type CaseBranchNS {
   CaseBranchNS(
     create: fn(Module) -> Module,
@@ -1125,12 +1303,14 @@ pub type CaseBranchNS {
   )
 }
 
+/// Adds a new node to the given case branch node.
 fn case_branch_node_create(expression: Module) -> Module {
   use expression <- modify_module_self(expression)
 
   CaseBranch(data: CaseBranchData(expression:, guard: None, body: []))
 }
 
+/// Creates a new case branch node with the given expression.
 fn case_branch_node_create_default() -> Module {
   create_module(
     CaseBranch(
@@ -1139,6 +1319,7 @@ fn case_branch_node_create_default() -> Module {
   )
 }
 
+/// Adds a new node to the given case branch node.
 fn case_branch_node_add(module: Module, node: Module) -> Module {
   use module, node <- modify_module(module, node)
 
@@ -1149,11 +1330,17 @@ fn case_branch_node_add(module: Module, node: Module) -> Module {
   }
 }
 
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
+//                                        Case Expression                                        //
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
+
+/// Namespace for creating and manipulating case expression nodes.
 pub const case_expression = CaseExpressionNS(
   create: case_expression_node_create,
   add: case_expression_node_add,
 )
 
+/// The type representing the namespace for creating and manipulating case expression nodes.
 pub type CaseExpressionNS {
   CaseExpressionNS(
     create: fn(Module) -> Module,
@@ -1161,12 +1348,14 @@ pub type CaseExpressionNS {
   )
 }
 
+/// Creates a new case expression node with the given expression and branches.
 fn case_expression_node_create(expression: Module) -> Module {
   use expression <- modify_module_self(expression)
 
   CaseExpression(expression:, branches: [])
 }
 
+/// Adds a new branch to the given case expression node.
 fn case_expression_node_add(module: Module, branch: Module) -> Module {
   use module, branch <- modify_module(module, branch)
 
@@ -1177,15 +1366,17 @@ fn case_expression_node_add(module: Module, branch: Module) -> Module {
   }
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                        Use Expression                                         //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// Namespace for creating and manipulating use expression nodes.
 pub const use_expression = UseExpressionNS(
   create: use_expression_node_create,
   add: use_expression_node_add,
 )
 
+/// The type representing the namespace for creating and manipulating use expression nodes.
 pub type UseExpressionNS {
   UseExpressionNS(
     create: fn(Module) -> Module,
@@ -1193,12 +1384,14 @@ pub type UseExpressionNS {
   )
 }
 
+/// Creates a new use expression node with the given right-hand side expression.
 fn use_expression_node_create(rhs: Module) -> Module {
   use rhs <- modify_module_self(rhs)
 
   UseExpression(parameters: [], rhs: rhs)
 }
 
+/// Adds a new parameter to the given use expression node.
 fn use_expression_node_add(module: Module, parameter: String) -> Module {
   use module <- modify_module_self(module)
 
@@ -1209,29 +1402,18 @@ fn use_expression_node_add(module: Module, parameter: String) -> Module {
   }
 }
 
-pub fn temptest() {
-  root.create()
-  |> root.add(
-    function_definition.create()
-    |> function_definition.with_name("my_function")
-    |> function_definition.add(binop.create(
-      identifier.create("a"),
-      Add,
-      identifier.create("b"),
-    )),
-  )
-}
-
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                       Const Definition                                        //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// Namespace for creating and manipulating const definition nodes.
 pub const const_definition = ConstDefinitionNS(
   create: const_definition_node_create,
   public: const_definition_node_public,
   as_type: const_definition_node_as_type,
 )
 
+/// The type representing the namespace for creating and manipulating const definition nodes.
 pub type ConstDefinitionNS {
   ConstDefinitionNS(
     create: fn(String, Module) -> Module,
@@ -1240,12 +1422,14 @@ pub type ConstDefinitionNS {
   )
 }
 
+/// Creates a new const definition node with the given name and value.
 fn const_definition_node_create(name: String, module: Module) -> Module {
   use module <- modify_module_self(module)
 
   ConstDefinition(public: False, as_type: False, name: name, value: module)
 }
 
+/// Marks the given const definition node as public.
 fn const_definition_node_public(module: Module) -> Module {
   use module <- modify_module_self(module)
 
@@ -1255,6 +1439,7 @@ fn const_definition_node_public(module: Module) -> Module {
   }
 }
 
+/// Marks the const definition as a type alias.
 fn const_definition_node_as_type(module: Module) -> Module {
   use module <- modify_module_self(module)
 
@@ -1264,23 +1449,26 @@ fn const_definition_node_as_type(module: Module) -> Module {
   }
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                        Section Comment                                        //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// Creates a new section comment node with the given comment.
 pub fn section_comment(comment: String) -> Module {
   create_module(SectionComment(comment: comment))
 }
 
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                        Let Definition                                         //
-//-----------------------------------------------------------------------------------------------//
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
+/// Namespace for creating and manipulating let definition nodes.
 pub const let_definition = LetDefinitionNS(
   create: let_definition_node_create,
   type_: let_definition_node_type,
 )
 
+/// The type representing the namespace for creating and manipulating let definition nodes.
 pub type LetDefinitionNS {
   LetDefinitionNS(
     create: fn(Module, Module) -> Module,
@@ -1288,12 +1476,14 @@ pub type LetDefinitionNS {
   )
 }
 
+/// Creates a new let definition node with the given pattern and value.
 fn let_definition_node_create(pattern: Module, value: Module) -> Module {
   use pattern, value <- modify_module(pattern, value)
 
   LetDefinition(pattern: pattern, type_: None, value: value)
 }
 
+/// Sets the type of the given let definition node.
 fn let_definition_node_type(module: Module, type_: Module) -> Module {
   use module, type_ <- modify_module(module, type_)
 
