@@ -275,11 +275,11 @@ fn import_to_string(import_: Import) -> String {
 
 /// Converts a module to a string, including both its imports and its node.
 pub fn to_string(module: Module) -> String {
-  [
-    module_imports_to_string(module),
-    module_node_to_string(module),
-  ]
-  |> string.join("\n\n")
+  let imports_str = module_imports_to_string(module)
+  case imports_str {
+    "" -> module_node_to_string(module)
+    _ -> imports_str <> "\n\n" <> module_node_to_string(module)
+  }
 }
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
